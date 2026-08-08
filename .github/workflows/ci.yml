@@ -16,6 +16,14 @@ jobs:
       - name: Checkout Project
         uses: actions/checkout@v4.2.2
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install Jinja2
+        run: pip install jinja2
+
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 

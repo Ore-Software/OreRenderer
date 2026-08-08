@@ -6,7 +6,7 @@
 #include <glm/ext/vector_float3.hpp>
 #include <glm/geometric.hpp>
 
-#include "object/Object.h"
+#include <OreRenderer/Object.h>
 
 enum shading
 {

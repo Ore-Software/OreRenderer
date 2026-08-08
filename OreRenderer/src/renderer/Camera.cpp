@@ -1,4 +1,4 @@
-#include "Camera.h"
+#include <OreRenderer/Camera.h>
 
 Camera::Camera(float pitch, float yaw, float distance)
     : m_Pitch(pitch), m_Yaw(yaw), m_Dist(distance)

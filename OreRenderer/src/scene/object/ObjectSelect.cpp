@@ -1,4 +1,5 @@
 #include "ObjectSelect.h"
+#include "mesh/ObjLoader.h"
 
 #include <algorithm>
 #include <filesystem>
@@ -25,7 +26,9 @@ Object& ObjectSelect::findObj(size_t index)
     // Load only the first time it is requested
     if (!info.object)
     {
-        info.object = std::make_unique<Object>(info.path);
+        info.object = std::make_unique<Object>(
+            ObjLoader::Load(info.path)
+        );
     }
 
     return *info.object;

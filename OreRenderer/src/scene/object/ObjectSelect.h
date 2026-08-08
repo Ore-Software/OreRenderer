@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "Object.h"
+#include <OreRenderer/Object.h>
 
 struct ObjectInfo
 {

@@ -10,9 +10,7 @@
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/geometric.hpp>
 
-#include "../object/Object.h"
-#include "../util/PlaneProjection.h"
-#include "../util/OrderVertices.h"
+#include <OreRenderer/Object.h>
 
 struct VertexRecord
 {

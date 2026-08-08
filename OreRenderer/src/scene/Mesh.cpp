@@ -1,4 +1,4 @@
-#include "Mesh.h"
+#include <OreRenderer/Mesh.h>
 
 Mesh::Mesh(Object obj, int shading)
     : m_Object(obj), m_ShadingType(shading)

@@ -1,4 +1,4 @@
-#include "Material.h"
+#include <OreRenderer/Material.h>
 
 Material::Material()
 {

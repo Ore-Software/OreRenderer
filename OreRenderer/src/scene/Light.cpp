@@ -1,4 +1,4 @@
-#include "Light.h"
+#include <OreRenderer/Light.h>
 
 Light::Light()
 {

@@ -12,18 +12,16 @@
 
 #include "renderer/Window.h"
 #include "renderer/Input.h"
-#include "renderer/VertexArray.h"
-#include "renderer/VertexBuffer.h"
-#include "renderer/IndexBuffer.h"
 #include "renderer/Shader.h"
-#include "renderer/Camera.h"
+#include <OreRenderer/Camera.h>
 #include "renderer/SaveImage.h"
-#include "scene/object/Object.h"
+#include <OreRenderer/Object.h>
 #include "scene/object/ObjectSelect.h"
-#include "scene/Mesh.h"
-#include "scene/Material.h"
-#include "scene/Light.h"
+#include <OreRenderer/Mesh.h>
+#include <OreRenderer/Material.h>
+#include <OreRenderer/Light.h>
 #include "scene/surface/Surface.h"
+#include <OreRenderer/Renderer.h>
 
 #include "ImguiSections.h"
 
@@ -140,10 +138,6 @@ int main()
     int triCount = static_cast<int>(obj.m_TriFaceIndices.size());
     int desiredTriCount = triCount;
 
-    VertexBufferLayout layout;
-    layout.Push<float>(3); // 3d coordinates
-    layout.Push<float>(3); // normals
-
     // render mode
     int currRenderMode = POLYGON;
     int nextRenderMode;
@@ -154,21 +148,16 @@ int main()
     int nextShadingType;
 
     Mesh mesh(obj, currShadingType);
+    Renderer renderer(mesh);
+
     // keep track of number of faces
     unsigned int numFaces = static_cast<unsigned int>(mesh.m_Object.m_FaceIndices.size());
-
-    // build openGL objects using mesh
-    VertexArray objectVA;
-    VertexBuffer objectVB(mesh.m_OutVertices, mesh.m_OutNumVert * sizeof(float), DRAW_MODE::STATIC);
-    // bind vertex buffer to vertex array
-    objectVA.AddBuffer(objectVB, layout);
-    IndexBuffer objectIB(mesh.m_OutIndices, mesh.m_OutNumIdx, DRAW_MODE::STATIC);
 
     // shaders
     std::string phongVertexPath = "res/shaders/phong.vert";
     std::string phongFragmentPath = "res/shaders/phong.frag";
     ShaderProgram phongShader(phongVertexPath, phongFragmentPath);
-    
+
     std::string blinnPhongFragmentPath = "res/shaders/blinnPhong.frag";
     ShaderProgram blinnPhongShader(phongVertexPath, blinnPhongFragmentPath);
 
@@ -551,9 +540,7 @@ int main()
 
             mesh.Rebuild(currShadingType); // rebuild mesh based on shading type
 
-            objectVA.Bind();
-            objectVB.AssignData(mesh.m_OutVertices, mesh.m_OutNumVert * sizeof(float), DRAW_MODE::STATIC);
-            objectIB.AssignData(mesh.m_OutIndices, mesh.m_OutNumIdx, DRAW_MODE::STATIC);
+            renderer.SetMesh(mesh);
         }
 
         ////////// regenerate object //////////
@@ -571,14 +558,14 @@ int main()
         if (ModifyModel)
         {
             mesh.Rebuild(obj); // rebuild mesh based on object info
-            numFaces = static_cast<unsigned int>(mesh.m_Object.m_FaceIndices.size()); // update number of faces
-            triCount = static_cast<int>(obj.m_TriFaceIndices.size()); desiredTriCount = triCount;
+            numFaces = static_cast<unsigned int>(
+                mesh.m_Object.m_FaceIndices.size()
+            );
 
-            objectVA.Bind();
-            objectVB.AssignData(mesh.m_OutVertices, mesh.m_OutNumVert * sizeof(float), DRAW_MODE::STATIC);
-            objectIB.AssignData(mesh.m_OutIndices, mesh.m_OutNumIdx, DRAW_MODE::STATIC);
+            triCount = static_cast<int>(obj.m_TriFaceIndices.size());
+            desiredTriCount = triCount;
 
-            ModifyModel = false;
+            renderer.SetMesh(mesh);
         }
 
         ////////// change render mode //////////
@@ -587,15 +574,15 @@ int main()
             currRenderMode = nextRenderMode;
 
             if (currRenderMode == POLYGON)
-                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+                renderer.SetRenderMode(RenderMode::Polygon);
             else if (currRenderMode == WIREFRAME)
-                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+                renderer.SetRenderMode(RenderMode::Wireframe);
             else if (currRenderMode == POINTCLOUD)
-                glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
+                renderer.SetRenderMode(RenderMode::PointCloud);
         }
 
         ////////// Render object here //////////
-        glDrawElements(GL_TRIANGLES, objectIB.GetCount(), GL_UNSIGNED_INT, 0);
+        renderer.Draw();
 
         ////////// Render Imgui here //////////
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

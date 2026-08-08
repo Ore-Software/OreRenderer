@@ -9,19 +9,15 @@
 
 #include <glm/ext/vector_float3.hpp>
 #include <glm/geometric.hpp>
-#include "../util/Triangulate.h"
 
 class Object
 {
 public:
 	Object();
-	Object(const std::string &filename);
 	~Object();
 
-	void loadOBJ(const std::string &filename);
 	void Rescale();
 	void Destroy();
-	void Reload(const std::string &filename);
 
 	void TriangulateFaces();
 
