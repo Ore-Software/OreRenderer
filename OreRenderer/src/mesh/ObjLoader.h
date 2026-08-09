@@ -2,10 +2,10 @@
 
 #include <string>
 
-#include <OreRenderer/Object.h>
+#include <OreRenderer/Mesh.h>
 
 class ObjLoader
 {
 public:
-    static Object Load(const std::string& filename);
+    static Mesh Load(const std::string& filename);
 };

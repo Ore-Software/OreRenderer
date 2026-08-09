@@ -19,19 +19,29 @@ const std::string& ObjectSelect::name(size_t index) const
     return m_Objects[index].name;
 }
 
-Object& ObjectSelect::findObj(size_t index)
+size_t ObjectSelect::findIndex(const std::string& name, size_t fallback) const
+{
+    for (size_t i = 0; i < m_Objects.size(); ++i)
+    {
+        if (m_Objects[i].name == name)
+            return i;
+    }
+    return fallback;
+}
+
+Mesh& ObjectSelect::findMesh(size_t index)
 {
     auto& info = m_Objects[index];
 
     // Load only the first time it is requested
-    if (!info.object)
+    if (!info.mesh)
     {
-        info.object = std::make_unique<Object>(
+        info.mesh = std::make_unique<Mesh>(
             ObjLoader::Load(info.path)
         );
     }
 
-    return *info.object;
+    return *info.mesh;
 }
 
 void ObjectSelect::loadObjects(const std::string& directory)
@@ -48,17 +58,17 @@ void ObjectSelect::loadObjects(const std::string& directory)
         if (entry.path().extension() != ".obj")
             continue;
 
-        ObjectInfo info;
+        MeshInfo info;
 
         info.name = entry.path().stem().string();
         info.path = entry.path().string();
 
-        // Object is NOT loaded here
+        // Mesh is NOT loaded here
         m_Objects.push_back(std::move(info));
     }
 
     // keep the list in alphabetical order
-    std::sort(m_Objects.begin(),m_Objects.end(), [](const ObjectInfo& a, const ObjectInfo& b)
+    std::sort(m_Objects.begin(), m_Objects.end(), [](const MeshInfo& a, const MeshInfo& b)
         {
             return a.name < b.name;
         });

@@ -32,17 +32,17 @@ namespace
     }
 }
 
-Object ObjLoader::Load(const std::string& filename)
+Mesh ObjLoader::Load(const std::string& filename)
 {
-    Object object;
+    Mesh mesh;
 
-    object.m_Min = glm::vec3{
+    mesh.m_Min = glm::vec3{
         1000000,
         1000000,
         1000000
     };
 
-    object.m_Max = glm::vec3{
+    mesh.m_Max = glm::vec3{
         -1000000,
         -1000000,
         -1000000
@@ -53,7 +53,7 @@ Object ObjLoader::Load(const std::string& filename)
     if (!in)
     {
         std::cerr << "Cannot open " << filename << std::endl;
-        return object;
+        return mesh;
     }
 
     std::string line;
@@ -69,15 +69,15 @@ Object ObjLoader::Load(const std::string& filename)
             s >> v.y;
             s >> v.z;
 
-            object.m_VertexPos.push_back(v);
+            mesh.m_VertexPos.push_back(v);
 
             for (unsigned int coord = 0; coord < 3; coord++)
             {
-                if (v[coord] > object.m_Max[coord])
-                    object.m_Max[coord] = v[coord];
+                if (v[coord] > mesh.m_Max[coord])
+                    mesh.m_Max[coord] = v[coord];
 
-                if (v[coord] < object.m_Min[coord])
-                    object.m_Min[coord] = v[coord];
+                if (v[coord] < mesh.m_Min[coord])
+                    mesh.m_Min[coord] = v[coord];
             }
         }
         else if (line.substr(0, 2) == "f ")
@@ -103,16 +103,16 @@ Object ObjLoader::Load(const std::string& filename)
                 faceIndices.push_back(vertIdx);
             }
 
-            object.m_FaceIndices.push_back(faceIndices);
+            mesh.m_FaceIndices.push_back(faceIndices);
 
-            object.m_NumPolygons[
+            mesh.m_NumPolygons[
                 static_cast<unsigned int>(faceIndices.size())
             ]++;
         }
     }
 
-    object.Rescale();
-    object.TriangulateFaces();
+    mesh.Rescale();
+    mesh.TriangulateFaces();
 
-    return object;
+    return mesh;
 }

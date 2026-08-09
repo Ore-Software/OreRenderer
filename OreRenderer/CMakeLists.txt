@@ -7,16 +7,17 @@ set(no_group_source_files
 source_group("" FILES ${no_group_source_files})
 
 set(Header_Files
+    "include/OreRenderer/Shader.h"
+    "include/OreRenderer/ShaderLibrary.h"
     "src/renderer/internal/IndexBuffer.h"
     "src/renderer/Input.h"
+    "src/renderer/CameraController.h"
     "src/renderer/SaveImage.h"
-    "src/renderer/Shader.h"
     "src/renderer/internal/VertexArray.h"
     "src/renderer/internal/VertexBuffer.h"
     "src/renderer/internal/VertexBufferLayout.h"
     "src/renderer/Window.h"
     "src/scene/object/ObjectSelect.h"
-    "src/scene/surface/Surface.h"
     "src/scene/util/PlaneProjection.h"
     "src/scene/util/Triangulate.h"
     "src/mesh/ObjLoader.h"
@@ -27,16 +28,16 @@ set(Source_Files
     "src/renderer/Camera.cpp"
     "src/renderer/internal/IndexBuffer.cpp"
     "src/renderer/Input.cpp"
+    "src/renderer/CameraController.cpp"
     "src/renderer/Shader.cpp"
+    "src/renderer/ShaderLibrary.cpp"
     "src/renderer/internal/VertexArray.cpp"
     "src/renderer/internal/VertexBuffer.cpp"
     "src/renderer/Window.cpp"
     "src/scene/Light.cpp"
     "src/scene/Material.cpp"
     "src/scene/Mesh.cpp"
-    "src/scene/object/Object.cpp"
     "src/scene/object/ObjectSelect.cpp"
-    "src/scene/surface/Surface.cpp"
     "src/scene/util/PlaneProjection.cpp"
     "src/scene/util/Triangulate.cpp"
     "src/stb_image_impl.cpp"
@@ -215,6 +216,7 @@ endif()
 set(ORE_RENDERER_DEPENDENCIES
     "opengl32"
     OreRenderer::GLAD
+    OreRenderer::ImGui
     OreRenderer::STB
     glfw
     glm::glm

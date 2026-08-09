@@ -5,13 +5,13 @@
 #include <string>
 #include <vector>
 
-#include <OreRenderer/Object.h>
+#include <OreRenderer/Mesh.h>
 
-struct ObjectInfo
+struct MeshInfo
 {
     std::string name;
     std::string path;
-    std::unique_ptr<Object> object;   // Loaded only when needed
+    std::unique_ptr<Mesh> mesh;
 };
 
 class ObjectSelect
@@ -20,13 +20,14 @@ public:
     ObjectSelect(const std::string& directory = "res/objects");
     ~ObjectSelect() = default;
 
-    size_t count() const; // number of loaded objects
-    const std::string& name(size_t index) const; // name for the UI
+    size_t count() const;
+    const std::string& name(size_t index) const;
+    size_t findIndex(const std::string& name, size_t fallback = 0) const;
 
-    Object& findObj(size_t index);
+    Mesh& findMesh(size_t index);
 
 private:
     void loadObjects(const std::string& directory);
 
-    std::vector<ObjectInfo> m_Objects;
+    std::vector<MeshInfo> m_Objects;
 };

@@ -1,5 +1,6 @@
 #include <iostream>
 #include <ctime>
+#include <sstream>
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -12,29 +13,13 @@
 
 #include "renderer/Window.h"
 #include "renderer/Input.h"
-#include "renderer/Shader.h"
-#include <OreRenderer/Camera.h>
+#include "renderer/CameraController.h"
 #include "renderer/SaveImage.h"
-#include <OreRenderer/Object.h>
-#include "scene/object/ObjectSelect.h"
 #include <OreRenderer/Mesh.h>
-#include <OreRenderer/Material.h>
-#include <OreRenderer/Light.h>
-#include "scene/surface/Surface.h"
+#include "scene/object/ObjectSelect.h"
 #include <OreRenderer/Renderer.h>
 
 #include "ImguiSections.h"
-
-enum shaderEnum
-{
-    GOURAND,
-    NORMAL,
-    PHONG,
-    BLINNPHONG,
-    GOOCH,
-    CEL,
-    COOKTORRANCE,
-};
 
 enum renderMode
 {
@@ -42,83 +27,6 @@ enum renderMode
     WIREFRAME,
     POINTCLOUD
 };
-
-static void processKeyboardInput(GLFWwindow* window, Camera& camera, float deltaTime)
-{
-    // close the window
-    if (Input::IsKeyDown(GLFW_KEY_ESCAPE))
-    {
-        glfwSetWindowShouldClose(window, true);
-    }
-
-    // Move forward
-    if (Input::IsKeyDown(GLFW_KEY_W))
-    {
-        camera.MoveCamera(camera.GetCameraFront(), deltaTime * 5.0f);
-    }
-    // Move backward
-    if (Input::IsKeyDown(GLFW_KEY_S))
-    {
-        camera.MoveCamera(-camera.GetCameraFront(), deltaTime * 5.0f);
-    }
-    // Strafe left
-    if (Input::IsKeyDown(GLFW_KEY_A))
-    {
-        camera.MoveCamera(camera.GetCameraRight(), deltaTime * 5.0f);
-    }
-    // Strafe right
-    if (Input::IsKeyDown(GLFW_KEY_D))
-    {
-        camera.MoveCamera(-camera.GetCameraRight(), deltaTime * 5.0f);
-    }
-    // fly up
-    if (Input::IsKeyDown(GLFW_KEY_SPACE))
-    {
-        camera.MoveCamera(camera.GetCameraUp(), deltaTime * 5.0f);
-    }
-    // drop down
-    if (Input::IsKeyDown(GLFW_KEY_LEFT_CONTROL))
-    {
-        camera.MoveCamera(-camera.GetCameraUp(), deltaTime * 5.0f);
-    }
-
-    // move closer
-    if (Input::IsKeyDown(GLFW_KEY_K))
-    {
-        float deltaDist = -deltaTime;
-        camera.RotateCamera(0, 0, deltaDist);
-    }
-    // move further
-    if (Input::IsKeyDown(GLFW_KEY_J))
-    {
-        float deltaDist = deltaTime;
-        camera.RotateCamera(0, 0, deltaDist);
-    }
-    // rotate left
-    if (Input::IsKeyDown(GLFW_KEY_LEFT))
-    {
-        float deltaYaw = deltaTime;
-        camera.RotateCamera(0, deltaYaw, 0);
-    }
-    // rotate right
-    if (Input::IsKeyDown(GLFW_KEY_RIGHT))
-    {
-        float deltaYaw = -deltaTime;
-        camera.RotateCamera(0, deltaYaw, 0);
-    }
-    // rotate up
-    if (Input::IsKeyDown(GLFW_KEY_UP))
-    {
-        float deltaPitch = deltaTime;
-        camera.RotateCamera(deltaPitch, 0, 0);
-    }
-    // rotate down
-    if (Input::IsKeyDown(GLFW_KEY_DOWN))
-    {
-        float deltaPitch = -deltaTime;
-        camera.RotateCamera(deltaPitch, 0, 0);
-    }
-}
 
 int main()
 {
@@ -129,13 +37,12 @@ int main()
 
     // build object from obj file
     ObjectSelect objects;
-    int currObject = 0;
+    int currObject = static_cast<int>(objects.findIndex("bunny"));
     int nextObject;
-    Object obj = objects.findObj(currObject);
-    Material meshMat;
+    Mesh mesh = objects.findMesh(currObject);
 
-    // object triangle count (QEM)
-    int triCount = static_cast<int>(obj.m_TriFaceIndices.size());
+    // object triangle count
+    int triCount = static_cast<int>(mesh.m_TriFaceIndices.size());
     int desiredTriCount = triCount;
 
     // render mode
@@ -147,65 +54,31 @@ int main()
     int currShadingType = FLAT;
     int nextShadingType;
 
-    Mesh mesh(obj, currShadingType);
-    Renderer renderer(mesh);
+    mesh.m_ShadingType = currShadingType;
+    // for rendering
+    mesh.BuildFaceNormals();
+    mesh.BuildVerticesIndices();
+
+    Renderer renderer("res/shaders");
+    renderer.SetMesh(mesh);
+    renderer.SetProjectionMatrix(glm::perspective(glm::radians(renderer.GetCamera().m_FOV), aspectRatio, 0.1f, 1000.0f));
+
+    Camera& camera = renderer.GetCamera();
+    Light& light = renderer.GetLight();
+    Material& material = renderer.GetMaterial();
+    ShaderLibrary& shaders = renderer.GetShaderLibrary();
+    GoochParams& gooch = renderer.GetGoochParams();
+    PBRParams& pbr = renderer.GetPBRParams();
+
+    // shader selection as int for imgui
+    int currShader = static_cast<int>(ShaderType::Normal);
+    int nextShader;
+    shaders.SetActiveShader(ShaderType::Normal);
 
     // keep track of number of faces
-    unsigned int numFaces = static_cast<unsigned int>(mesh.m_Object.m_FaceIndices.size());
+    unsigned int numFaces = static_cast<unsigned int>(mesh.m_FaceIndices.size());
 
-    // shaders
-    std::string phongVertexPath = "res/shaders/phong.vert";
-    std::string phongFragmentPath = "res/shaders/phong.frag";
-    ShaderProgram phongShader(phongVertexPath, phongFragmentPath);
-
-    std::string blinnPhongFragmentPath = "res/shaders/blinnPhong.frag";
-    ShaderProgram blinnPhongShader(phongVertexPath, blinnPhongFragmentPath);
-
-    std::string normalVertexPath = "res/shaders/normal.vert";
-    std::string normalFragmentPath = "res/shaders/normal.frag";
-    ShaderProgram normalShader(normalVertexPath, normalFragmentPath);
-
-    std::string gourandVertexPath = "res/shaders/gourand.vert";
-    std::string gourandFragmentPath = "res/shaders/gourand.frag";
-    ShaderProgram gourandShader(gourandVertexPath, gourandFragmentPath);
-
-    std::string goochFragmentPath = "res/shaders/gooch.frag";
-    ShaderProgram goochShader(phongVertexPath, goochFragmentPath);
-
-    std::string celFragmentPath = "res/shaders/cel.frag";
-    ShaderProgram celShader(phongVertexPath, celFragmentPath);
-
-    std::string cookTorranceFragmentPath = "res/shaders/cookTorrance.frag";
-    ShaderProgram cookTorranceShader(phongVertexPath, cookTorranceFragmentPath);
-
-    int currShader = NORMAL;
-    int nextShader;
-    ShaderProgram shader = normalShader;
-    shader.Bind();
-
-    // camera setup
-    float yaw = 1.5f; // radians
-    float pitch = 0.3333f; // radians
-    float radius = 3.0f;
-    Camera camera(pitch, yaw, radius);
-
-    float rotationAngle = 0.0f; // rotation angle of the object mesh
     glm::mat4 modelMatrix = glm::mat4(1.0f);
-    glm::mat4 projMatrix = glm::perspective(glm::radians(camera.m_FOV), aspectRatio, 0.1f, 1000.0f);
-
-    // lighting
-    Light light = Light();
-    std::vector<int> toggled; toggled.resize(3);
-
-    // Gooch variables
-    std::vector<float> gooch_warm = {1, 0.25, 0};
-    std::vector<float> gooch_cool = {0, 0.75, 1};
-    float gooch_alpha = 0.2f;
-    float gooch_beta = 0.2f;
-
-    // Cook-Torrance variables
-    float metallic = 0.2f;
-    float roughness = 0.3f;
 
     // Apply modification algorithm
     bool ModifyModel = false;
@@ -221,18 +94,12 @@ int main()
     bool triangles = false;
 
     GLFWwindow* windowID = window.GetID();
-    // input initialization & input callbacks
     Input::Init(windowID);
+    CameraController cameraCtrl(camera, screenWidth, screenHeight);
 
-    // keyboard movement variables
     float currentTime = 0.0f;
     float lastTime = 0.0f;
     float deltaTime = 0.0f;
-    // mouse movement variables
-    double currXpos, currYpos, deltaX, deltaY;
-    double lastXpos = 0.0;
-    double lastYpos = 0.0;
-    float sens = 200.0f;
 
     // Setup Dear ImGui context
     ImGui::CreateContext();
@@ -253,32 +120,19 @@ int main()
 
         ////////// input controls //////////
         lastTime = currentTime;
-        currentTime = (float) glfwGetTime();
+        currentTime = (float)glfwGetTime();
         deltaTime = currentTime - lastTime;
 
-        processKeyboardInput(windowID, camera, deltaTime);
-        
-        // mouse movement
-        glfwGetCursorPos(windowID, &currXpos, &currYpos);
-        deltaX = (currXpos - lastXpos) / screenWidth;  // it is bounded by -1 and 1
-        deltaY = (currYpos - lastYpos) / screenHeight; // it is bounded by -1 and 1
-        lastXpos = currXpos;
-        lastYpos = currYpos;
+        cameraCtrl.Update(windowID, deltaTime);
 
-        // rotate model according to mouse movement
-        if (Input::IsMouseButtonDown(GLFW_MOUSE_BUTTON_1) && !ImGui::GetIO().WantCaptureMouse)
+        if (cameraCtrl.Rotated())
         {
-            rotationAngle = (float)deltaX * sens;
-            rotationAngle > 360.0f ? rotationAngle -= 360.0f : NULL;
-            modelMatrix = glm::rotate(modelMatrix, glm::radians(rotationAngle), glm::vec3(0.0f, 1.0f, 0.0f));
+            modelMatrix = cameraCtrl.ApplyModelRotation(modelMatrix);
         }
 
-        // adjust FOV using vertical scroll
-        if (Input::GetScrollY() != 0)
+        if (cameraCtrl.ProjectionChanged())
         {
-            camera.changeFOV(Input::GetScrollY());
-            projMatrix = glm::perspective(glm::radians(camera.m_FOV), aspectRatio, 0.1f, 1000.0f);
-            Input::ResetScroll();
+            renderer.SetProjectionMatrix(glm::perspective(glm::radians(camera.m_FOV), aspectRatio, 0.1f, 1000.0f));
         }
 
         ////////// clearing per frame //////////
@@ -319,26 +173,27 @@ int main()
         {
             ImGui::Indent();
 
-            ImGui::RadioButton("Normal shader", &nextShader, NORMAL);
-            ImGui::RadioButton("Gourand shader", &nextShader, GOURAND);
-            ImGui::RadioButton("Phong shader", &nextShader, PHONG);
-            ImGui::RadioButton("Blinn-Phong shader", &nextShader, BLINNPHONG);
-            ImGui::RadioButton("Cook-Torrance shader", &nextShader, COOKTORRANCE);
-            ImGui::RadioButton("Cel shader", &nextShader, CEL);
-            ImGui::RadioButton("Gooch shader", &nextShader, GOOCH);
-        
-            if (nextShader == GOURAND || nextShader == PHONG || nextShader == BLINNPHONG || nextShader == GOOCH || nextShader == CEL || nextShader == COOKTORRANCE)
+            ImGui::RadioButton("Normal shader", &nextShader, static_cast<int>(ShaderType::Normal));
+            ImGui::RadioButton("Gourand shader", &nextShader, static_cast<int>(ShaderType::Gourand));
+            ImGui::RadioButton("Phong shader", &nextShader, static_cast<int>(ShaderType::Phong));
+            ImGui::RadioButton("Blinn-Phong shader", &nextShader, static_cast<int>(ShaderType::BlinnPhong));
+            ImGui::RadioButton("Cook-Torrance shader", &nextShader, static_cast<int>(ShaderType::CookTorrance));
+            ImGui::RadioButton("Cel shader", &nextShader, static_cast<int>(ShaderType::Cel));
+            ImGui::RadioButton("Gooch shader", &nextShader, static_cast<int>(ShaderType::Gooch));
+
+            ShaderType selectedType = static_cast<ShaderType>(nextShader);
+            if (selectedType != ShaderType::Normal)
             {
                 ImGui::Indent();
                 if (ImGui::CollapsingHeader("Material controls"))
                 {
                     ImGui::Indent();
 
-                    ImGui::ColorEdit3("Ambient color", meshMat.m_Ambient.data());
-                    ImGui::ColorEdit3("Diffuse color", meshMat.m_Diffuse.data());
-                    ImGui::ColorEdit3("Specular color", meshMat.m_Specular.data());
-                    if (nextShader != COOKTORRANCE)
-                        ImGui::SliderFloat("Shine constant", &meshMat.m_Shine, 10, 100);
+                    ImGui::ColorEdit3("Ambient color", material.m_Ambient.data());
+                    ImGui::ColorEdit3("Diffuse color", material.m_Diffuse.data());
+                    ImGui::ColorEdit3("Specular color", material.m_Specular.data());
+                    if (selectedType != ShaderType::CookTorrance)
+                        ImGui::SliderFloat("Shine constant", &material.m_Shine, 10, 100);
 
                     ImGui::Unindent();
                 }
@@ -365,16 +220,16 @@ int main()
                     ImGui::Unindent();
                 }
 
-                if (nextShader == GOOCH)
+                if (selectedType == ShaderType::Gooch)
                 {
                     if (ImGui::CollapsingHeader("Gooch controls"))
                     {
                         ImGui::Indent();
 
-                        ImGui::ColorEdit3("Warm color", gooch_warm.data());
-                        ImGui::ColorEdit3("Cool color", gooch_cool.data());
-                        ImGui::SliderFloat("Alpha", &gooch_alpha, 0, 1);
-                        ImGui::SliderFloat("Beta", &gooch_beta, 0, 1);
+                        ImGui::ColorEdit3("Warm color", gooch.warm);
+                        ImGui::ColorEdit3("Cool color", gooch.cool);
+                        ImGui::SliderFloat("Alpha", &gooch.alpha, 0, 1);
+                        ImGui::SliderFloat("Beta", &gooch.beta, 0, 1);
 
                         ImGui::Spacing();
 
@@ -382,14 +237,14 @@ int main()
                     }
                 }
 
-                if (nextShader == COOKTORRANCE)
+                if (selectedType == ShaderType::CookTorrance)
                 {
                     if (ImGui::CollapsingHeader("Cook-Torrance controls"))
                     {
                         ImGui::Indent();
 
-                        ImGui::SliderFloat("Metallic", &metallic, 0, 1);
-                        ImGui::SliderFloat("Roughness", &roughness, 0.05f, 1);
+                        ImGui::SliderFloat("Metallic", &pbr.metallic, 0, 1);
+                        ImGui::SliderFloat("Roughness", &pbr.roughness, 0.05f, 1);
 
                         ImGui::Spacing();
 
@@ -405,14 +260,14 @@ int main()
         if (ImGui::CollapsingHeader("Render mode"))
         {
             ImGui::Indent();
-            
+
             ImGui::RadioButton("Polygon", &nextRenderMode, POLYGON);
             ImGui::RadioButton("Wireframe", &nextRenderMode, WIREFRAME);
             ImGui::RadioButton("Point cloud", &nextRenderMode, POINTCLOUD);
-                
+
             ImGui::Unindent();
         }
-        
+
         if (ImGui::Button("Reset Camera"))
         {
             camera.ResetView();
@@ -437,7 +292,7 @@ int main()
                 std::string sstr = "Number of polygons: " + ss.str();
                 ImGui::Text(sstr.c_str());
 
-                for (const std::pair<unsigned int, unsigned int> numPolygon : mesh.m_Object.m_NumPolygons)
+                for (const std::pair<unsigned int, unsigned int> numPolygon : mesh.m_NumPolygons)
                 {
                     std::stringstream sizeStringStream;
                     sizeStringStream << numPolygon.first;
@@ -479,59 +334,11 @@ int main()
         if (nextShader != currShader)
         {
             currShader = nextShader;
-
-            if (currShader == PHONG)
-                shader = phongShader;
-            else if (currShader == BLINNPHONG)
-                shader = blinnPhongShader;
-            else if (currShader == GOURAND)
-                shader = gourandShader;
-            else if (currShader == NORMAL)
-                shader = normalShader;
-            else if (currShader == GOOCH)
-                shader = goochShader;
-            else if (currShader == CEL)
-                shader = celShader;
-            else if (currShader == COOKTORRANCE)
-                shader = cookTorranceShader;
-
-            shader.Bind();
+            shaders.SetActiveShader(static_cast<ShaderType>(currShader));
         }
 
         ////////// upload uniforms //////////
-        shader.SetUniformMat4f("u_Model", modelMatrix);
-        shader.SetUniformMat4f("u_View", camera.GetViewMatrix());
-        shader.SetUniformMat4f("u_Projection", projMatrix);
-        if (currShader == GOURAND || currShader == PHONG || currShader == BLINNPHONG || currShader == GOOCH || currShader == CEL || currShader == COOKTORRANCE)
-        {
-            shader.SetUniform3fv("light_pos", 3, light.m_Pos.data());
-            shader.SetUniform3fv("light_col", 3, light.m_Col.data());
-            shader.SetUniform3f("light_brightness", light.m_Brightness[0], light.m_Brightness[1], light.m_Brightness[2]);
-            ////////// cast bool to int /////////
-            for (unsigned int i = 0; i < 3; i++)
-            {
-                toggled[i] = static_cast<int>(light.m_LightsToggled[i]);
-            }
-            shader.SetUniform1iv("light_toggled", 3, toggled.data()); // upload the lights toggle option
-
-            shader.SetUniform3fv("ambient", 1, meshMat.m_Ambient.data());
-            shader.SetUniform3fv("diffuse", 1, meshMat.m_Diffuse.data());
-            shader.SetUniform3fv("specular", 1, meshMat.m_Specular.data());
-            shader.SetUniform1f("shine", meshMat.m_Shine);
-
-            if (currShader == GOOCH)
-            {
-                shader.SetUniform3fv("warm", 1, gooch_warm.data());
-                shader.SetUniform3fv("cool", 1, gooch_cool.data());
-                shader.SetUniform1f("alpha", gooch_alpha);
-                shader.SetUniform1f("beta", gooch_beta);
-            }
-            if (currShader == COOKTORRANCE)
-            {
-                shader.SetUniform1f("metallic", metallic);
-                shader.SetUniform1f("roughness", roughness);
-            }
-        }
+        renderer.SetModelMatrix(modelMatrix);
 
         ////////// regenerate object //////////
         if (nextShadingType != currShadingType)
@@ -548,24 +355,24 @@ int main()
         {
             currObject = nextObject;
 
-            obj = objects.findObj(currObject); // search for the object requested
-            triCount = static_cast<int>(obj.m_TriFaceIndices.size()); desiredTriCount = triCount;
-            
+            mesh = objects.findMesh(currObject);
+            triCount = static_cast<int>(mesh.m_TriFaceIndices.size()); desiredTriCount = triCount;
+
             ModifyModel = true;
         }
 
         ////////// apply modification //////////
         if (ModifyModel)
         {
-            mesh.Rebuild(obj); // rebuild mesh based on object info
-            numFaces = static_cast<unsigned int>(
-                mesh.m_Object.m_FaceIndices.size()
-            );
+            mesh.m_ShadingType = currShadingType;
+            mesh.Rebuild(); // rebuild mesh based on object info
+            numFaces = static_cast<unsigned int>(mesh.m_FaceIndices.size());
 
-            triCount = static_cast<int>(obj.m_TriFaceIndices.size());
+            triCount = static_cast<int>(mesh.m_TriFaceIndices.size());
             desiredTriCount = triCount;
 
             renderer.SetMesh(mesh);
+            ModifyModel = false;
         }
 
         ////////// change render mode //////////
@@ -593,6 +400,7 @@ int main()
         /* Poll for and process events */
         glfwPollEvents();
     }
+
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
 

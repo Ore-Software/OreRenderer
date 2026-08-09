@@ -1,4 +1,4 @@
-#include "Shader.h"
+#include <OreRenderer/Shader.h>
 
 #include <glad/gl.h>
 #include <fstream>

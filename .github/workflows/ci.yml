@@ -31,11 +31,13 @@ jobs:
         uses: threeal/cmake-action@v2.1.0
         with:
           source-dir: .
-          build-dir: .
+          build-dir: build
           options: |
             CMAKE_BUILD_TYPE=Release
+            -G "Visual Studio 17 2022"
+            -A x64
 
       - name: Build Solution with MSBuild
         run: |
-          msbuild OreRenderer.sln /p:Configuration=Release /p:Platform=x64
+          msbuild build/OreRenderer.sln /p:Configuration=Release /p:Platform=x64
         shell: cmd
