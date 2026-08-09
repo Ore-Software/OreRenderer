@@ -19,8 +19,6 @@
 #include "scene/object/ObjectSelect.h"
 #include <OreRenderer/Renderer.h>
 
-#include "ImguiSections.h"
-
 enum renderMode
 {
     POLYGON,
@@ -287,20 +285,9 @@ int main()
             ImGui::Checkbox("Number of Polygons", &triangles);
             if (triangles)
             {
-                std::stringstream ss;
-                ss << numFaces;
-                std::string sstr = "Number of polygons: " + ss.str();
-                ImGui::Text(sstr.c_str());
-
-                for (const std::pair<unsigned int, unsigned int> numPolygon : mesh.m_NumPolygons)
-                {
-                    std::stringstream sizeStringStream;
-                    sizeStringStream << numPolygon.first;
-                    std::stringstream numStringStream;
-                    numStringStream << numPolygon.second;
-                    std::string str = "Number of " + sizeStringStream.str() + "-gons: " + numStringStream.str();
-                    ImGui::Text(str.c_str());
-                }
+                ImGui::Text("Number of polygons: %u", numFaces);
+                for (const auto& [size, count] : mesh.m_NumPolygons)
+                    ImGui::Text("Number of %u-gons: %u", size, count);
             }
 
             ImGui::Unindent();

@@ -88,6 +88,11 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 include(CMake/Dependencies.cmake)
 
 ################################################################################
+# Options
+################################################################################
+option(ORE_RENDERER_BUILD_DEMO "Build the OreRendererDemo executable" ON)
+
+################################################################################
 # Sub-projects
 ################################################################################
 add_subdirectory(OreRenderer)
