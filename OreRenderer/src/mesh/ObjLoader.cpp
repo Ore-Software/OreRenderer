@@ -5,28 +5,24 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <charconv>
 
 namespace
 {
     void customSplit(
-        const std::string& str,
+        std::string_view str,
         char separator,
-        std::vector<std::string>& strings)
+        std::vector<std::string_view>& strings)
     {
-        int startIndex = 0;
-        int endIndex = 0;
+        size_t startIndex = 0;
 
-        for (unsigned int i = 0; i <= str.size(); i++)
+        for (size_t i = 0; i <= str.size(); i++)
         {
             if (i == str.size() || str[i] == separator)
             {
-                endIndex = i;
+                strings.push_back(str.substr(startIndex, i - startIndex));
 
-                std::string temp;
-                temp.append(str, startIndex, endIndex - startIndex);
-                strings.push_back(temp);
-
-                startIndex = endIndex + 1;
+                startIndex = i + 1;
             }
         }
     }
@@ -48,7 +44,7 @@ Mesh ObjLoader::Load(const std::string& filename)
         -1000000
     };
 
-    std::ifstream in(filename);
+    std::ifstream in(filename, std::ios::binary);
 
     if (!in)
     {
@@ -62,7 +58,7 @@ Mesh ObjLoader::Load(const std::string& filename)
     {
         if (line.substr(0, 2) == "v ")
         {
-            std::istringstream s(line.substr(2));
+            std::istringstream s{ std::string(line.substr(2)) };
 
             glm::vec3 v;
             s >> v.x;
@@ -84,26 +80,33 @@ Mesh ObjLoader::Load(const std::string& filename)
         {
             std::string s(line.substr(2));
 
-            std::vector<std::string> face;
+            std::vector<std::string_view> face;
             customSplit(s, ' ', face);
 
             std::vector<unsigned int> faceIndices;
+            faceIndices.reserve(face.size());
 
-            for (const std::string& corner : face)
+            for (std::string_view corner : face)
             {
                 if (corner.empty())
                     continue;
 
-                std::vector<std::string> vertex;
+                std::vector<std::string_view> vertex;
                 customSplit(corner, '/', vertex);
 
-                unsigned int vertIdx = std::stoul(vertex[0]);
+                unsigned int vertIdx = 0;
+                auto result = std::from_chars(vertex[0].data(), vertex[0].data() + vertex[0].size(), vertIdx);
+                if (result.ec != std::errc{})
+                {
+                    std::cerr << "Bad vertex index in face: '" << vertex[0] << "'" << std::endl;
+                    continue;
+                }
                 vertIdx--;
 
                 faceIndices.push_back(vertIdx);
             }
 
-            mesh.m_FaceIndices.push_back(faceIndices);
+            mesh.m_FaceIndices.push_back(std::move(faceIndices));
 
             mesh.m_NumPolygons[
                 static_cast<unsigned int>(faceIndices.size())

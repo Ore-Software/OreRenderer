@@ -59,7 +59,7 @@ std::vector<std::vector<unsigned int>> extractTriangulation(std::vector<std::vec
 }
 
 // can assume faceIdx.size() > 3
-std::vector<std::vector<unsigned int>> triangulatePolygonalFace(std::vector<unsigned int> faceIdx, std::vector<glm::vec3> allVertices)
+std::vector<std::vector<unsigned int>> triangulatePolygonalFace(const std::vector<unsigned int>& faceIdx, const std::vector<glm::vec3>& allVertices)
 {
     std::vector<glm::vec3> polyVertices;
     for (unsigned int corner : faceIdx)
